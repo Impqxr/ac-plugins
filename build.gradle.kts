@@ -40,9 +40,9 @@ subprojects {
 
     // Fill out with your info
     aliucord {
-        author("DISCORD USERNAME", 123456789L)
-        updateUrl.set("https://raw.githubusercontent.com/USERNAME/REPONAME/builds/updater.json")
-        buildUrl.set("https://raw.githubusercontent.com/USERNAME/REPONAME/builds/%s.zip")
+        author("impqxr", 458605907245400064L)
+        updateUrl.set("https://raw.githubusercontent.com/Impqxr/ac-plugins/builds/updater.json")
+        buildUrl.set("https://raw.githubusercontent.com/Impqxr/ac-plugins/builds/%s.zip")
     }
 
     android {
@@ -81,6 +81,9 @@ subprojects {
         implementation("androidx.appcompat:appcompat:1.4.0")
         implementation("com.google.android.material:material:1.4.0")
         implementation("androidx.constraintlayout:constraintlayout:2.1.2")
+        implementation("com.google.code.gson:gson:2.10.1")
+        // implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.0")
+
     }
 }
 
