@@ -1,8 +1,9 @@
-version = "0.0.1"
+version = "0.0.2"
 description = "Search for images in Gelbooru"
 
 aliucord {
     changelog.set("""
+	    v0.0.2: Encoding tags
         v0.0.1: Initial beta release
     """.trimIndent())
 

@@ -13,6 +13,7 @@ import android.content.Context
 import com.aliucord.utils.GsonUtils.fromJson
 import com.discord.api.message.embed.MessageEmbed
 //import com.google.gson.annotations.SerializedName
+import java.net.URLEncoder
 import com.google.gson.Gson
 import kotlin.math.max
 import kotlin.math.min
@@ -53,7 +54,7 @@ fun booruRequest(tags: String, page: Int): BooruRequest {
     var resp = if (tags == "") {
         simpleGet("$URL&pid=$page")
     } else {
-        simpleGet("$URL&pid=$page&tags=$tags")
+        simpleGet("$URL&pid=$page&tags=${URLEncoder.encode(tags)}")
     }
 
     // fuck you SerializedName(), you broke my heart :(
