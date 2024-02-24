@@ -1,9 +1,10 @@
-version = "0.0.2"
+version = "0.0.3"
 description = "Search for images in Gelbooru"
 
 aliucord {
     changelog.set("""
-	    v0.0.2: Encoding tags
+        v0.0.3: Fixed deprecated warning, error with -1 page number. Added &id for simple reverse search 
+        v0.0.2: Encoding tags
         v0.0.1: Initial beta release
     """.trimIndent())
 

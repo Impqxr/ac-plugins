@@ -15,7 +15,6 @@ import com.discord.api.message.embed.MessageEmbed
 //import com.google.gson.annotations.SerializedName
 import java.net.URLEncoder
 import com.google.gson.Gson
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.truncate
 import kotlin.random.Random
@@ -39,7 +38,8 @@ data class BooruAttributes(
 )
 
 data class BooruPost(
-    val fileUrl: String
+    val fileUrl: String,
+    val id: Int
 )
 
 fun invalidArgumentEmbed(message: String): MessageEmbed {
@@ -54,7 +54,7 @@ fun booruRequest(tags: String, page: Int): BooruRequest {
     var resp = if (tags == "") {
         simpleGet("$URL&pid=$page")
     } else {
-        simpleGet("$URL&pid=$page&tags=${URLEncoder.encode(tags)}")
+        simpleGet("$URL&pid=$page&tags=${URLEncoder.encode(tags, "UTF-8")}")
     }
 
     // fuck you SerializedName(), you broke my heart :(
@@ -156,7 +156,7 @@ class Booru : Plugin() {
                         .setTitle("No results found!")
                         .setColor(0x000000FF)
                     if (pages > 0) {
-                        notFoundEmbed.setDescription("Tag contains only ${pluralise(pages, "page")}")
+                        notFoundEmbed.setDescription("Tag contains ${pluralise(pages, "page")}")
                     }
                     return@registerCommand CommandsAPI.CommandResult("",
                         listOf(
@@ -171,21 +171,28 @@ class Booru : Plugin() {
                     booruLogger.debug("The whole has been selected (${response.post.count()})")
                     response.post
                 } else {
-                    if (postNumber < 0) {
-                        val randomPostNumber = max(Random.nextInt(0, response.post.count() - count), 0)
-                        booruLogger.debug("Random Post Number: $randomPostNumber - ${randomPostNumber + count}\n" +
-                                "Posts in the page: ${response.post.count()}")
-                        response.post.slice(randomPostNumber - 1 until randomPostNumber+count)
+                    if (postNumber <= 0) {
+                        val randomPostNumber = Random.nextInt(1, response.post.count())
+                        if (randomPostNumber + count > response.post.count()) {
+                            booruLogger.debug("(higher)Random Post Number: ${randomPostNumber - count} - ${randomPostNumber}\n" +
+                                    "Posts in the page: ${response.post.count()}")
+                            response.post.slice(randomPostNumber - 1 - count until randomPostNumber)
+                        } else {
+                            booruLogger.debug("(lower)Random Post Number: $randomPostNumber - ${randomPostNumber + count}\n" +
+                                    "Posts in the page: ${response.post.count()}")
+                            response.post.slice(randomPostNumber - 1 until randomPostNumber + count)
+                        }
                     } else {
-                        val nonRandomPostNumber = min(postNumber, response.post.count())
-                        booruLogger.debug("Non Random Post Number: ${max(nonRandomPostNumber - count, 0)} - ${nonRandomPostNumber}\n" +
+                        val nonRandomPostNumberFrom = min(postNumber, response.post.count())
+                        val nonRandomPostNumberTo = min(nonRandomPostNumberFrom + count, response.post.count())
+                        booruLogger.debug("Non Random Post Number: $nonRandomPostNumberFrom - $nonRandomPostNumberTo\n" +
                                 "Posts in the page: ${response.post.count()}")
-                        response.post.slice(max(nonRandomPostNumber - count, 0) - 1 until nonRandomPostNumber)
+                        response.post.slice(nonRandomPostNumberFrom - 1 until nonRandomPostNumberTo)
                     }
                 }
 
                 for (post in randomPosts) {
-                    posts.add(post.fileUrl)
+                    posts.add(post.fileUrl + "?id=${post.id}")
                 }
 
                 CommandsAPI.CommandResult(posts.joinToString("\n"),
