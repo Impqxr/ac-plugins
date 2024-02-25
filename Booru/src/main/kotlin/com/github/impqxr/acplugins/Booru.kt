@@ -11,16 +11,15 @@ import com.aliucord.Utils.pluralise
 import com.discord.api.commands.ApplicationCommandType
 import android.content.Context
 import com.aliucord.utils.GsonUtils.fromJson
-import com.discord.api.message.embed.MessageEmbed
 //import com.google.gson.annotations.SerializedName
 import java.net.URLEncoder
 import com.google.gson.Gson
+import kotlin.math.ceil
 import kotlin.math.min
-import kotlin.math.truncate
 import kotlin.random.Random
 
 val booruLogger = Logger("Booru")
-const val MAX_PAGE = 476 // Too deep! Pull it back some. Holy fuck.
+const val MAX_PAGE = 476 // Error: Too deep! Pull it back some. Holy fuck.
 const val MAX_PAGE_POSTS = 42
 const val URL = "https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1&limit=$MAX_PAGE_POSTS"
 
@@ -42,15 +41,8 @@ data class BooruPost(
     val id: Int
 )
 
-fun invalidArgumentEmbed(message: String): MessageEmbed {
-    return MessageEmbedBuilder()
-            .setTitle("Invalid `$message` argument!")
-            .setDescription("Please read how to use it, thanks.")
-            .setColor(0x00FF0000)
-            .build()
-}
-
 fun booruRequest(tags: String, page: Int): BooruRequest {
+    booruLogger.debug(page.toString())
     var resp = if (tags == "") {
         simpleGet("$URL&pid=$page")
     } else {
@@ -79,9 +71,18 @@ class Booru : Plugin() {
                     Utils.createCommandChoice("Sensitive", "sensitive"),
                     Utils.createCommandChoice("General", "general"))
             ),
-            Utils.createCommandOption(ApplicationCommandType.INTEGER, "count", "How many images to send in one message (1-5)"),
-            Utils.createCommandOption(ApplicationCommandType.INTEGER, "page", "Page (Max limit $MAX_PAGE)"),
-            Utils.createCommandOption(ApplicationCommandType.INTEGER, "postNumber", "Post number (Up to $MAX_PAGE_POSTS per 1 page)"),
+            Utils.createCommandOption(ApplicationCommandType.INTEGER, "count", "How many images to send in one message (1-5)",
+                minValue = 1,
+                maxValue = 5
+            ),
+            Utils.createCommandOption(ApplicationCommandType.INTEGER, "page", "Page (Max limit $MAX_PAGE)",
+                minValue = 1,
+                maxValue = MAX_PAGE
+            ),
+            Utils.createCommandOption(ApplicationCommandType.INTEGER, "postNumber", "Post number (Up to $MAX_PAGE_POSTS per 1 page)",
+                minValue = 1,
+                maxValue = MAX_PAGE_POSTS
+            ),
         )) { ctx ->
             try {
                 var tags = ctx.getStringOrDefault("tags", "").trim()
@@ -93,31 +94,7 @@ class Booru : Plugin() {
                 if (rating != "") {
                     tags += " rating:$rating"
                 }
-                // TODO: improve it somehow
-                if (count > 4 || count < 0) {
-                    return@registerCommand CommandsAPI.CommandResult("",
-                        listOf(
-                            invalidArgumentEmbed("count")
-                        ),
-                        false
-                    )
-                }
-                if (pageArg > MAX_PAGE) {
-                    return@registerCommand CommandsAPI.CommandResult("",
-                        listOf(
-                            invalidArgumentEmbed("page")
-                        ),
-                        false
-                    )
-                }
-                if (postNumber > MAX_PAGE_POSTS) {
-                    return@registerCommand CommandsAPI.CommandResult("",
-                        listOf(
-                            invalidArgumentEmbed("post number")
-                        ),
-                        false
-                    )
-                }
+
                 booruLogger.debug("Tags and Rating: $tags\n" +
                         "Count: ${count + 1}\n" +
                         "Page Argument: $pageArg\n" +
@@ -140,18 +117,18 @@ class Booru : Plugin() {
                             false
                         )
                     } else {
-                        booruLogger.debug("Pages: ${responseInfo.count / MAX_PAGE_POSTS}\nPosts count: ${responseInfo.count}")
-                        page = truncate((responseInfo.count / MAX_PAGE_POSTS).toDouble()).toInt()
-                        page = Random.nextInt(0, min(page, MAX_PAGE))
-                        booruLogger.debug("Selected page: $page")
+                        booruLogger.debug("Pages: ${responseInfo.count.toDouble() / MAX_PAGE_POSTS}\nPosts count: ${responseInfo.count}")
+                        page = ceil(responseInfo.count.toDouble() / MAX_PAGE_POSTS).toInt()
+                        page = if (0 == page) 0 else Random.nextInt(0, min(page, MAX_PAGE))
+                        booruLogger.debug("Selected page: ${page + 1}")
                     }
                 } else {
-                    page = pageArg
+                    page = pageArg - 1
                 }
 
                 val response = booruRequest(tags, page)
                 if (response.count == 0 || response.post == null) {
-                    val pages = truncate((response.count / MAX_PAGE_POSTS).toDouble()).toInt()
+                    val pages = ceil(response.count.toDouble() / MAX_PAGE_POSTS).toInt()
                     val notFoundEmbed = MessageEmbedBuilder()
                         .setTitle("No results found!")
                         .setColor(0x000000FF)
@@ -172,7 +149,7 @@ class Booru : Plugin() {
                     response.post
                 } else {
                     if (postNumber <= 0) {
-                        val randomPostNumber = Random.nextInt(1, response.post.count())
+                        val randomPostNumber = if (1 == response.post.count()) 1 else Random.nextInt(1, response.post.count())
                         if (randomPostNumber + count > response.post.count()) {
                             booruLogger.debug("(higher)Random Post Number: ${randomPostNumber - count} - ${randomPostNumber}\n" +
                                     "Posts in the page: ${response.post.count()}")
